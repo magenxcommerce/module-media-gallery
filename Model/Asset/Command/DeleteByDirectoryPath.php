@@ -10,16 +10,15 @@ namespace Magento\MediaGallery\Model\Asset\Command;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\CouldNotDeleteException;
-use Magento\MediaGalleryApi\Model\Asset\Command\DeleteByPathInterface;
+use Magento\MediaGalleryApi\Model\Asset\Command\DeleteByDirectoryPathInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Delete media asset by path
- *
+ * Remove asset(s) that correspond the provided directory path
  * @deprecated 100.4.0 use \Magento\MediaGalleryApi\Api\DeleteAssetsByPathInterface instead
- * @see \Magento\MediaGalleryApi\Api\DeleteAssetsByPathInterface
+ * @see \Magento\MediaGalleryApi\Api\DeleteAssetsByPathInterfac
  */
-class DeleteByPath implements DeleteByPathInterface
+class DeleteByDirectoryPath implements DeleteByDirectoryPathInterface
 {
     private const TABLE_MEDIA_GALLERY_ASSET = 'media_gallery_asset';
 
@@ -50,27 +49,46 @@ class DeleteByPath implements DeleteByPathInterface
     }
 
     /**
-     * Delete media asset by path
+     * Delete media asset(s) by path
      *
-     * @param string $mediaAssetPath
+     * @param string $directoryPath
      *
      * @return void
+     *
      * @throws CouldNotDeleteException
      */
-    public function execute(string $mediaAssetPath): void
+    public function execute(string $directoryPath): void
     {
+        $this->validateDirectoryPath($directoryPath);
         try {
+            // Make sure that the path has a trailing slash
+            $directoryPath = rtrim($directoryPath, '/') . '/';
+
             /** @var AdapterInterface $connection */
             $connection = $this->resourceConnection->getConnection();
             $tableName = $this->resourceConnection->getTableName(self::TABLE_MEDIA_GALLERY_ASSET);
-            $connection->delete($tableName, [self::MEDIA_GALLERY_ASSET_PATH . ' = ?' => $mediaAssetPath]);
+            $connection->delete($tableName, [self::MEDIA_GALLERY_ASSET_PATH . ' LIKE ?' => $directoryPath . '%']);
         } catch (\Exception $exception) {
             $this->logger->critical($exception);
             $message = __(
-                'Could not delete media asset with path %path: %error',
-                ['path' => $mediaAssetPath, 'error' => $exception->getMessage()]
+                'Could not delete media assets by path %path: %error',
+                ['path' => $directoryPath, 'error' => $exception->getMessage()]
             );
             throw new CouldNotDeleteException($message, $exception);
+        }
+    }
+
+    /**
+     * Validate the directory path
+     *
+     * @param string $directoryPath
+     *
+     * @throws CouldNotDeleteException
+     */
+    private function validateDirectoryPath(string $directoryPath): void
+    {
+        if (!$directoryPath || trim($directoryPath) === '') {
+            throw new CouldNotDeleteException(__('Cannot remove assets, the directory path does not exist'));
         }
     }
 }
