@@ -16,9 +16,7 @@ use Magento\MediaGalleryApi\Model\Asset\Command\GetByIdInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Get media asset by id
- * @deprecated 100.4.0 use \Magento\MediaGalleryApi\Api\GetAssetsByIdsInterface instead
- * @see \Magento\MediaGalleryApi\Api\GetAssetsByIdsInterface
+ * Class GetById
  */
 class GetById implements GetByIdInterface
 {
@@ -30,7 +28,7 @@ class GetById implements GetByIdInterface
     private $resourceConnection;
 
     /**
-     * @var AssetInterfaceFactory
+     * @var AssetInterface
      */
     private $assetFactory;
 
@@ -75,38 +73,23 @@ class GetById implements GetByIdInterface
                 ->where('amg.id = ?', $mediaAssetId);
             $mediaAssetData = $connection->query($select)->fetch();
         } catch (\Exception $exception) {
-            $this->logger->critical($exception);
             $message = __(
                 'En error occurred during get media asset data by id %id: %error',
                 ['id' => $mediaAssetId, 'error' => $exception->getMessage()]
             );
+            $this->logger->critical($message);
             throw new IntegrationException($message, $exception);
         }
 
         if (empty($mediaAssetData)) {
-            $message = __('There is no such media asset with id %id', ['id' => $mediaAssetId]);
+            $message = __('There is no such media asset with id "%1"', $mediaAssetId);
             throw new NoSuchEntityException($message);
         }
 
         try {
-            return $this->assetFactory->create(
-                [
-                    'id' => $mediaAssetData['id'],
-                    'path' => $mediaAssetData['path'],
-                    'title' => $mediaAssetData['title'],
-                    'description' => $mediaAssetData['description'],
-                    'source' => $mediaAssetData['source'],
-                    'hash' => $mediaAssetData['hash'],
-                    'contentType' => $mediaAssetData['content_type'],
-                    'width' => $mediaAssetData['width'],
-                    'height' => $mediaAssetData['height'],
-                    'size' => $mediaAssetData['size'],
-                    'createdAt' => $mediaAssetData['created_at'],
-                    'updatedAt' => $mediaAssetData['updated_at'],
-                ]
-            );
+            return $this->assetFactory->create(['data' => $mediaAssetData]);
         } catch (\Exception $exception) {
-            $this->logger->critical($exception);
+            $this->logger->critical($exception->getMessage());
             $message = __(
                 'En error occurred during initialize media asset with id %id: %error',
                 ['id' => $mediaAssetId, 'error' => $exception->getMessage()]
